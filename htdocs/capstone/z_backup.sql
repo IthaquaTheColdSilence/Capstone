@@ -5,66 +5,91 @@ SET time_zone = '+00:00';
 SET foreign_key_checks = 0;
 SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO';
 
-DROP TABLE IF EXISTS `Inventory`;
-CREATE TABLE `Inventory` (
-  `ItemID` int(11) NOT NULL AUTO_INCREMENT,
-  `ItemName` varchar(150) NOT NULL,
-  `Price` decimal(10,2) NOT NULL,
-  `Quantity` int(11) NOT NULL,
-  `Status` enum('In Stock','Out of Stock') DEFAULT 'In Stock',
-  PRIMARY KEY (`ItemID`)
+DROP TABLE IF EXISTS `analytics`;
+CREATE TABLE `analytics` (
+  `analytics_id` int(11) NOT NULL AUTO_INCREMENT,
+  `item_id` int(11) DEFAULT NULL,
+  `total_quantity_sold` int(11) DEFAULT NULL,
+  `total_earnings` decimal(10,2) DEFAULT NULL,
+  `last_calculated` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`analytics_id`),
+  KEY `item_id` (`item_id`),
+  CONSTRAINT `analytics_ibfk_1` FOREIGN KEY (`item_id`) REFERENCES `inventory` (`item_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
-INSERT INTO `Inventory` (`ItemID`, `ItemName`, `Price`, `Quantity`, `Status`) VALUES
-(1,	'Soft Drink',	20.00,	50,	'In Stock'),
-(2,	'Chips',	15.00,	30,	'In Stock'),
-(3,	'Bread',	10.00,	0,	'Out of Stock');
+INSERT INTO `analytics` (`analytics_id`, `item_id`, `total_quantity_sold`, `total_earnings`, `last_calculated`) VALUES
+(1,	1,	100,	1000.00,	'2024-11-05 12:01:11'),
+(2,	2,	50,	500.00,	'2024-11-05 12:01:11');
 
-DROP TABLE IF EXISTS `Role`;
-CREATE TABLE `Role` (
-  `RoleID` int(11) NOT NULL AUTO_INCREMENT,
-  `RoleName` varchar(50) NOT NULL,
-  PRIMARY KEY (`RoleID`)
+DROP TABLE IF EXISTS `employee_sales`;
+CREATE TABLE `employee_sales` (
+  `emp_sale_id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) DEFAULT NULL,
+  `sale_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`emp_sale_id`),
+  KEY `user_id` (`user_id`),
+  KEY `sale_id` (`sale_id`),
+  CONSTRAINT `employee_sales_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
+  CONSTRAINT `employee_sales_ibfk_2` FOREIGN KEY (`sale_id`) REFERENCES `sales` (`sale_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
-INSERT INTO `Role` (`RoleID`, `RoleName`) VALUES
-(1,	'Admin'),
-(2,	'Employee');
 
-DROP TABLE IF EXISTS `Sales`;
-CREATE TABLE `Sales` (
-  `SaleID` int(11) NOT NULL AUTO_INCREMENT,
-  `ItemID` int(11) DEFAULT NULL,
-  `UserID` int(11) DEFAULT NULL,
-  `Description` varchar(0) NOT NULL,
-  `Quantity` int(11) NOT NULL,
-  `TotalCost` decimal(10,2) NOT NULL,
-  `SaleDateTime` datetime DEFAULT current_timestamp(),
-  PRIMARY KEY (`SaleID`),
-  KEY `ItemID` (`ItemID`),
-  KEY `UserID` (`UserID`),
-  CONSTRAINT `Sales_ibfk_1` FOREIGN KEY (`ItemID`) REFERENCES `Inventory` (`ItemID`),
-  CONSTRAINT `Sales_ibfk_2` FOREIGN KEY (`UserID`) REFERENCES `User` (`UserID`)
+DROP TABLE IF EXISTS `inventory`;
+CREATE TABLE `inventory` (
+  `item_id` int(11) NOT NULL AUTO_INCREMENT,
+  `item_name` varchar(100) NOT NULL,
+  `quantity` int(11) DEFAULT 0,
+  `price` decimal(10,2) NOT NULL,
+  `last_updated` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`item_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
-INSERT INTO `Sales` (`SaleID`, `ItemID`, `UserID`, `Description`, `Quantity`, `TotalCost`, `SaleDateTime`) VALUES
-(1,	1,	2,	'',	3,	60.00,	'2024-10-23 03:27:41');
+INSERT INTO `inventory` (`item_id`, `item_name`, `quantity`, `price`, `last_updated`) VALUES
+(1,	'Item A',	50,	10.00,	'2024-11-05 12:01:11'),
+(2,	'Item B',	30,	5.00,	'2024-11-05 12:01:11'),
+(3,	'Item C',	20,	20.00,	'2024-11-05 12:01:11');
 
-DROP TABLE IF EXISTS `User`;
-CREATE TABLE `User` (
-  `UserID` int(11) NOT NULL AUTO_INCREMENT,
-  `Username` varchar(100) NOT NULL,
-  `Password` varchar(255) NOT NULL,
-  `Email` varchar(100) NOT NULL,
-  `IsConfirmed` tinyint(1) DEFAULT 1,
-  `RoleID` int(11) DEFAULT NULL,
-  PRIMARY KEY (`UserID`),
-  KEY `RoleID` (`RoleID`),
-  CONSTRAINT `User_ibfk_1` FOREIGN KEY (`RoleID`) REFERENCES `Role` (`RoleID`)
+DROP TABLE IF EXISTS `sales`;
+CREATE TABLE `sales` (
+  `sale_id` int(11) NOT NULL AUTO_INCREMENT,
+  `item_id` int(11) DEFAULT NULL,
+  `quantity` int(11) NOT NULL,
+  `total_price` decimal(10,2) NOT NULL,
+  `sale_date` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`sale_id`),
+  KEY `item_id` (`item_id`),
+  CONSTRAINT `sales_ibfk_1` FOREIGN KEY (`item_id`) REFERENCES `inventory` (`item_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
-INSERT INTO `User` (`UserID`, `Username`, `Password`, `Email`, `IsConfirmed`, `RoleID`) VALUES
-(1,	'admin_user',	'hashed_password',	'admin@example.com',	1,	1),
-(2,	'employee_user',	'hashed_password',	'employee@example.com',	1,	2);
+INSERT INTO `sales` (`sale_id`, `item_id`, `quantity`, `total_price`, `sale_date`) VALUES
+(1,	1,	5,	50.00,	'2024-11-05 12:01:11'),
+(2,	2,	3,	15.00,	'2024-11-05 12:01:11');
 
--- 2024-10-23 03:44:32
+DROP TABLE IF EXISTS `users`;
+CREATE TABLE `users` (
+  `user_id` int(11) NOT NULL AUTO_INCREMENT,
+  `username` varchar(50) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `role` enum('Admin','Employee') NOT NULL,
+  PRIMARY KEY (`user_id`),
+  UNIQUE KEY `username` (`username`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+INSERT INTO `users` (`user_id`, `username`, `password`, `role`) VALUES
+(1,	'admin_user',	'$2y$10$.JLCdWgZbaIWYZTcE/oZnev.gRqygQ5Ed43NexGSvAqJ/TEQy1Y8a',	'Admin'),
+(2,	'employee_user',	'$2y$10$O08pqMU1sUvrdrh35.sMVeFfHZEegcEciNsO/kyrMgS0W/KbCLIxW',	'Employee');
+
+DROP TABLE IF EXISTS `user_sessions`;
+CREATE TABLE `user_sessions` (
+  `session_id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) DEFAULT NULL,
+  `role` enum('Admin','Employee') NOT NULL,
+  `session_start` timestamp NOT NULL DEFAULT current_timestamp(),
+  `session_end` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`session_id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `user_sessions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+
+-- 2024-11-05 23:36:53
